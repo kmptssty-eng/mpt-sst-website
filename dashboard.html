@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MPT-SST Panoramic Peace Console</title>
+
+<!-- CSS Libraries -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+<style>
+:root {
+    --peace-blue: #1a5276;
+    --harmony-green: #28b463;
+    --alert-red: #e74c3c;
+    --warning-orange: #f39c12;
+    --neutral-gray: #5d6d7e;
+    --spiritual-purple: #8e44ad;
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #f8fafc;
+    overflow-x: hidden;
+}
+
+/* Header */
+.dashboard-header {
+    background: linear-gradient(135deg, var(--peace-blue) 0%, #2c3e50 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+/* Cards */
+.metric-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    transition: transform 0.3s, box-shadow 0.3s;
+    border: none;
+    height: 100%;
+}
+
+.metric-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+/* Map */
+#map {
+    height: 500px;
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+    z-index: 1;
+}
+
+/* Color Classes */
+.cri-high { color: var(--harmony-green); }
+.cri-medium { color: var(--warning-orange); }
+.cri-low { color: var(--alert-red); }
+
+.badge-cri-high { background: var(--harmony-green); color: white; }
+.badge-cri-medium { background: var(--warning-orange); color: white; }
+.badge-cri-low { background: var(--alert-red); color: white; }
+
+/* Table */
+.data-table { font-size: 14px; }
+.data-table tbody tr:hover { background-color: #f8f9fa; cursor: pointer; }
+
+/* Progress Bars */
+.progress { height: 8px; border-radius: 4px; }
+
+/* Sidebar */
+.sidebar {
+    background: white;
+    min-height: 100vh;
+    box-shadow: 2px 0 12px rgba(0,0,0,0.05);
+}
+
+.nav-link { border-radius: 8px; margin: 4px 0; color: var(--neutral-gray); }
+.nav-link.active {
+    background: linear-gradient(135deg, var(--peace-blue) 0%, var(--harmony-green) 100%);
+    color: white;
+}
+.nav-link:hover { background: #f1f8ff; color: var(--peace-blue); }
+
+/* Alerts */
+.alert-card { border-left: 4px solid; transition: all 0.2s; }
+.alert-high { border-left-color: var(--alert-red); }
+.alert-medium { border-left-color: var(--warning-orange); }
+.alert-low { border-left-color: var(--neutral-gray); }
+
+/* Network Graph */
+.node { fill: steelblue; stroke: white; stroke-width: 2px; cursor: pointer; }
+.link { stroke: #999; stroke-opacity: 0.6; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .metric-card { margin-bottom: 15px; }
+    #map { height: 300px; }
+    .sidebar { min-height: auto; }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: var(--peace-blue); border-radius: 3px; }
+
+/* Animations */
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+.pulse { animation: pulse 2s infinite; }
+
+/* Tooltip */
+.custom-tooltip {
+    position: absolute;
+    background: rgba(0,0,0,0.9);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 1001;
+    max-width: 200px;
+}
+</style>
+</head>
+
+<body>
+<div class="dashboard-header p-3">
+    <h3 class="mb-0 text-center">MPT-SST Panoramic Peace Console</h3>
+</div>
+
+<div class="container-fluid">
+    <div class="row g-0">
+        <!-- Sidebar -->
+        <div class="col-lg-2 col-md-3 sidebar d-none d-md-block">
+            <div class="p-3">
+                <h6 class="text-uppercase text-muted mb-3">Navigation</h6>
+                <nav class="nav flex-column">
+                    <a class="nav-link active" href="#" onclick="switchTab('dashboard')"><i class="fas fa-chart-line me-2"></i>Dashboard</a>
+                    <a class="nav-link" href="#" onclick="switchTab('map')"><i class="fas fa-map-marked-alt me-2"></i>CRI Map</a>
+                    <a class="nav-link" href="#" onclick="switchTab('alerts')"><i class="fas fa-exclamation-triangle me-2"></i>ESS Alerts</a>
+                    <a class="nav-link" href="#" onclick="switchTab('network')"><i class="fas fa-project-diagram me-2"></i>UDU Network</a>
+                    <a class="nav-link" href="#" onclick="switchTab('interventions')"><i class="fas fa-tasks me-2"></i>TPI Tracker</a>
+                    <a class="nav-link" href="#" onclick="switchTab('lab')"><i class="fas fa-flask me-2"></i>Integrity Lab</a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-lg-10 col-md-9 col-12 p-3" id="contentArea">
+            <div id="dashboardTab">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="metric-card p-3">
+                            <h6>Consciousness Resonance Index</h6>
+                            <h2 class="cri-high">78.5</h2>
+                            <small class="text-success"><i class="fas fa-arrow-up me-1"></i>+2.3% this week</small>
+                            <div class="progress mt-2"><div class="progress-bar bg-success" style="width:78.5%"></div></div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card p-3">
+                            <h6>Ethical Stress Signals</h6>
+                            <h2 class="cri-low">3</h2>
+                            <small class="text-danger"><i class="fas fa-exclamation-circle me-1"></i>Active alerts</small>
+                            <div class="mt-2">
+                                <span class="badge bg-danger me-1">High: 1</span>
+                                <span class="badge bg-warning">Medium: 2</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card p-3">
+                            <h6>UDU Network</h6>
+                            <h2>24</h2>
+                            <small class="text-info">Active stakeholders</small>
+                            <div class="progress mt-2"><div class="progress-bar bg-info" style="width:78%"></div></div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card p-3">
+                            <h6>TPI Interventions</h6>
+                            <h2 class="cri-medium">15</h2>
+                            <small class="text-warning">8 in progress</small>
+                            <div class="progress mt-2"><div class="progress-bar bg-warning" style="width:65%"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-lg-8">
+                        <div class="metric-card p-3">
+                            <h6>Community Resonance Map</h6>
+                            <div id="map"></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="metric-card p-3">
+                            <h6>CRI Components</h6>
+                            <small>Social Cohesion 82%</small>
+                            <div class="progress mb-2"><div class="progress-bar bg-success" style="width:82%"></div></div>
+                            <small>Economic Inclusion 76%</small>
+                            <div class="progress mb-2"><div class="progress-bar bg-info" style="width:76%"></div></div>
+                            <small>Conflict Resolution 81%</small>
+                            <div class="progress mb-2"><div class="progress-bar bg-warning" style="width:81%"></div></div>
+                            <small>Institutional Trust 75%</small>
+                            <div class="progress mb-2"><div class="progress-bar bg-primary" style="width:75%"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JS Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+// Initialize map
+var map = L.map('map').setView([31.6, 34.5], 8);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+</script>
+</body>
+</html>
