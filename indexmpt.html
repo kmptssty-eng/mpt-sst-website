@@ -1,0 +1,1219 @@
+What about this MPT SST dashboard: "<!DOCTYPE html>
+
+<html lang="en">  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">  
+    <title>MPT-SST Panoramic Peace Console</title>  <!-- CSS Libraries -->  
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">  
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">  
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">  
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">  
+  
+<style>  
+    :root {  
+        --peace-blue: #1a5276;  
+        --harmony-green: #28b463;  
+        --alert-red: #e74c3c;  
+        --warning-orange: #f39c12;  
+        --neutral-gray: #5d6d7e;  
+        --spiritual-purple: #8e44ad;  
+    }  
+      
+    body {  
+        font-family: 'Segoe UI', system-ui, sans-serif;  
+        background: #f8fafc;  
+        overflow-x: hidden;  
+    }  
+      
+    /* Header */  
+    .dashboard-header {  
+        background: linear-gradient(135deg, var(--peace-blue) 0%, #2c3e50 100%);  
+        color: white;  
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);  
+        position: sticky;  
+        top: 0;  
+        z-index: 1000;  
+    }  
+      
+    /* Cards */  
+    .metric-card {  
+        background: white;  
+        border-radius: 12px;  
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);  
+        transition: transform 0.3s, box-shadow 0.3s;  
+        border: none;  
+        height: 100%;  
+    }  
+      
+    .metric-card:hover {  
+        transform: translateY(-4px);  
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);  
+    }  
+      
+    /* Map */  
+    #map {  
+        height: 500px;  
+        border-radius: 10px;  
+        border: 2px solid #e9ecef;  
+        z-index: 1;  
+    }  
+      
+    /* Color Classes */  
+    .cri-high { color: var(--harmony-green); }  
+    .cri-medium { color: var(--warning-orange); }  
+    .cri-low { color: var(--alert-red); }  
+      
+    .badge-cri-high { background: var(--harmony-green); color: white; }  
+    .badge-cri-medium { background: var(--warning-orange); color: white; }  
+    .badge-cri-low { background: var(--alert-red); color: white; }  
+      
+    /* Table */  
+    .data-table {  
+        font-size: 14px;  
+    }  
+      
+    .data-table tbody tr:hover {  
+        background-color: #f8f9fa;  
+        cursor: pointer;  
+    }  
+      
+    /* Progress Bars */  
+    .progress {  
+        height: 8px;  
+        border-radius: 4px;  
+    }  
+      
+    /* Sidebar */  
+    .sidebar {  
+        background: white;  
+        min-height: 100vh;  
+        box-shadow: 2px 0 12px rgba(0,0,0,0.05);  
+    }  
+      
+    .nav-link {  
+        border-radius: 8px;  
+        margin: 4px 0;  
+        color: var(--neutral-gray);  
+    }  
+      
+    .nav-link.active {  
+        background: linear-gradient(135deg, var(--peace-blue) 0%, var(--harmony-green) 100%);  
+        color: white;  
+    }  
+      
+    .nav-link:hover {  
+        background: #f1f8ff;  
+        color: var(--peace-blue);  
+    }  
+      
+    /* Alerts */  
+    .alert-card {  
+        border-left: 4px solid;  
+        transition: all 0.2s;  
+    }  
+      
+    .alert-high { border-left-color: var(--alert-red); }  
+    .alert-medium { border-left-color: var(--warning-orange); }  
+    .alert-low { border-left-color: var(--neutral-gray); }  
+      
+    /* Network Graph */  
+    .node {  
+        fill: steelblue;  
+        stroke: white;  
+        stroke-width: 2px;  
+        cursor: pointer;  
+    }  
+      
+    .link {  
+        stroke: #999;  
+        stroke-opacity: 0.6;  
+    }  
+      
+    /* Responsive */  
+    @media (max-width: 768px) {  
+        .metric-card {  
+            margin-bottom: 15px;  
+        }  
+          
+        #map {  
+            height: 300px;  
+        }  
+          
+        .sidebar {  
+            min-height: auto;  
+        }  
+    }  
+      
+    /* Custom Scrollbar */  
+    ::-webkit-scrollbar {  
+        width: 6px;  
+    }  
+      
+    ::-webkit-scrollbar-track {  
+        background: #f1f1f1;  
+    }  
+      
+    ::-webkit-scrollbar-thumb {  
+        background: var(--peace-blue);  
+        border-radius: 3px;  
+    }  
+      
+    /* Animations */  
+    @keyframes pulse {  
+        0% { opacity: 1; }  
+        50% { opacity: 0.7; }  
+        100% { opacity: 1; }  
+    }  
+      
+    .pulse {  
+        animation: pulse 2s infinite;  
+    }  
+      
+    /* Tooltip */  
+    .custom-tooltip {  
+        position: absolute;  
+        background: rgba(0,0,0,0.9);  
+        color: white;  
+        padding: 8px 12px;  
+        border-radius: 6px;  
+        font-size: 12px;  
+        pointer-events: none;  
+        z-index: 1001;  
+        max-width: 200px;  
+    }  
+</style>
+
+</head>  
+<body>  
+    <!-- Main Container -->  
+    <div class="container-fluid p-0">  
+        <!-- Header -->  
+        <div class="dashboard-header px-3 py-2">  
+            <div class="d-flex justify-content-between align-items-center">  
+                <div>  
+                    <h1 class="h4 mb-0"><i class="fas fa-peace me-2"></i>MPT-SST Peace Console</h1>  
+                    <small class="opacity-75">Panoramic Operational Dashboard</small>  
+                </div>  
+                <div class="d-flex align-items-center">  
+                    <span class="badge bg-success me-2">LIVE</span>  
+                    <div class="dropdown">  
+                        <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">  
+                            <i class="fas fa-user-circle me-1"></i>Peace Steward  
+                        </button>  
+                        <ul class="dropdown-menu">  
+                            <li><a class="dropdown-item" href="#" onclick="showAlert('Profile coming soon')"><i class="fas fa-user me-2"></i>Profile</a></li>  
+                            <li><a class="dropdown-item" href="#" onclick="showAlert('Settings coming soon')"><i class="fas fa-cog me-2"></i>Settings</a></li>  
+                            <li><hr class="dropdown-divider"></li>  
+                            <li><a class="dropdown-item text-danger" href="#" onclick="showAlert('Logged out successfully')"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>  
+                        </ul>  
+                    </div>  
+                </div>  
+            </div>  
+        </div>  <!-- Main Content -->  
+    <div class="row g-0">  
+        <!-- Sidebar -->  
+        <div class="col-lg-2 col-md-3 sidebar d-none d-md-block">  
+            <div class="p-3">  
+                <h6 class="text-uppercase text-muted mb-3">Navigation</h6>  
+                <nav class="nav flex-column">  
+                    <a class="nav-link active" href="#" onclick="switchTab('dashboard')">  
+                        <i class="fas fa-chart-line me-2"></i>Dashboard  
+                    </a>  
+                    <a class="nav-link" href="#" onclick="switchTab('map')">  
+                        <i class="fas fa-map-marked-alt me-2"></i>CRI Map  
+                    </a>  
+                    <a class="nav-link" href="#" onclick="switchTab('alerts')">  
+                        <i class="fas fa-exclamation-triangle me-2"></i>ESS Alerts  
+                        <span class="badge bg-danger float-end pulse" id="alertCount">3</span>  
+                    </a>  
+                    <a class="nav-link" href="#" onclick="switchTab('network')">  
+                        <i class="fas fa-project-diagram me-2"></i>UDU Network  
+                    </a>  
+                    <a class="nav-link" href="#" onclick="switchTab('interventions')">  
+                        <i class="fas fa-tasks me-2"></i>TPI Tracker  
+                    </a>  
+                    <a class="nav-link" href="#" onclick="switchTab('lab')">  
+                        <i class="fas fa-flask me-2"></i>Integrity Lab  
+                    </a>  
+                </nav>  
+                  
+                <hr class="my-4">  
+                  
+                <h6 class="text-uppercase text-muted mb-3">Quick Actions</h6>  
+                <div class="d-grid gap-2">  
+                    <button class="btn btn-sm btn-outline-primary" onclick="addESSAlert()">  
+                        <i class="fas fa-plus me-1"></i>New Alert  
+                    </button>  
+                    <button class="btn btn-sm btn-outline-success" onclick="addIntervention()">  
+                        <i class="fas fa-plus me-1"></i>New Intervention  
+                    </button>  
+                    <button class="btn btn-sm btn-outline-info" onclick="exportData()">  
+                        <i class="fas fa-download me-1"></i>Export Data  
+                    </button>  
+                </div>  
+                  
+                <hr class="my-4">  
+                  
+                <div class="text-center">  
+                    <small class="text-muted">System Status</small>  
+                    <div class="d-flex align-items-center justify-content-center mt-2">  
+                        <div class="me-2">  
+                            <i class="fas fa-circle text-success"></i>  
+                        </div>  
+                        <span class="small">Operational</span>  
+                    </div>  
+                    <small class="text-muted d-block mt-2">Last updated: <span id="lastUpdated">Just now</span></small>  
+                </div>  
+            </div>  
+        </div>  
+          
+        <!-- Main Dashboard -->  
+        <div class="col-lg-10 col-md-9 col-12 p-3" id="contentArea">  
+            <!-- Dashboard Tab -->  
+            <div id="dashboardTab">  
+                <!-- Top Metrics Row -->  
+                <div class="row g-3 mb-4">  
+                    <div class="col-md-3">  
+                        <div class="metric-card p-3">  
+                            <div class="d-flex justify-content-between align-items-start">  
+                                <div>  
+                                    <h6 class="text-muted mb-1">Consciousness Resonance Index</h6>  
+                                    <h2 class="cri-high mb-0">78.5</h2>  
+                                    <small class="text-success"><i class="fas fa-arrow-up me-1"></i>+2.3% this week</small>  
+                                </div>  
+                                <i class="fas fa-brain text-peace-blue fa-2x opacity-50"></i>  
+                            </div>  
+                            <div class="progress mt-3">  
+                                <div class="progress-bar bg-success" style="width: 78.5%"></div>  
+                            </div>  
+                        </div>  
+                    </div>  
+                      
+                    <div class="col-md-3">  
+                        <div class="metric-card p-3">  
+                            <div class="d-flex justify-content-between align-items-start">  
+                                <div>  
+                                    <h6 class="text-muted mb-1">Ethical Stress Signals</h6>  
+                                    <h2 class="cri-low mb-0">3</h2>  
+                                    <small class="text-danger"><i class="fas fa-exclamation-circle me-1"></i>Active alerts</small>  
+                                </div>  
+                                <i class="fas fa-exclamation-triangle text-warning-orange fa-2x opacity-50"></i>  
+                            </div>  
+                            <div class="mt-3">  
+                                <span class="badge bg-danger me-1">High: 1</span>  
+                                <span class="badge bg-warning">Medium: 2</span>  
+                            </div>  
+                        </div>  
+                    </div>  
+                      
+                    <div class="col-md-3">  
+                        <div class="metric-card p-3">  
+                            <div class="d-flex justify-content-between align-items-start">  
+                                <div>  
+                                    <h6 class="text-muted mb-1">UDU Network</h6>  
+                                    <h2 class="mb-0">24</h2>  
+                                    <small class="text-info">Active stakeholders</small>  
+                                </div>  
+                                <i class="fas fa-project-diagram text-spiritual-purple fa-2x opacity-50"></i>  
+                            </div>  
+                            <div class="mt-3">  
+                                <div class="d-flex justify-content-between small">  
+                                    <span>Network Density</span>  
+                                    <span class="fw-bold">78%</span>  
+                                </div>  
+                                <div class="progress">  
+                                    <div class="progress-bar bg-info" style="width: 78%"></div>  
+                                </div>  
+                            </div>  
+                        </div>  
+                    </div>  
+                      
+                    <div class="col-md-3">  
+                        <div class="metric-card p-3">  
+                            <div class="d-flex justify-content-between align-items-start">  
+                                <div>  
+                                    <h6 class="text-muted mb-1">TPI Interventions</h6>  
+                                    <h2 class="cri-medium mb-0">15</h2>  
+                                    <small class="text-warning">8 in progress</small>  
+                                </div>  
+                                <i class="fas fa-tasks text-peace-blue fa-2x opacity-50"></i>  
+                            </div>  
+                            <div class="progress mt-3">  
+                                <div class="progress-bar bg-warning" style="width: 65%"></div>  
+                            </div>  
+                        </div>  
+                    </div>  
+                </div>  
+                  
+                <!-- Map and Components -->  
+                <div class="row g-3">  
+                    <div class="col-lg-8">  
+                        <div class="metric-card p-3">  
+                            <div class="d-flex justify-content-between align-items-center mb-3">  
+                                <h6 class="mb-0">Community Resonance Map</h6>  
+                                <div class="btn-group btn-group-sm">  
+                                    <button class="btn btn-outline-primary active" onclick="switchMapView('heatmap')">Heatmap</button>  
+                                    <button class="btn btn-outline-primary" onclick="switchMapView('points')">Points</button>  
+                                    <button class="btn btn-outline-primary" onclick="switchMapView('alerts')">Alerts</button>  
+                                </div>  
+                            </div>  
+                            <div id="map"></div>  
+                            <div class="mt-3 d-flex justify-content-between align-items-center">  
+                                <div>  
+                                    <span class="badge bg-success me-2"><i class="fas fa-circle"></i> High CRI (80+)</span>  
+                                    <span class="badge bg-warning me-2"><i class="fas fa-circle"></i> Medium CRI (50-79)</span>  
+                                    <span class="badge bg-danger"><i class="fas fa-circle"></i> Low CRI (<50)</span>  
+                                </div>  
+                                <button class="btn btn-sm btn-outline-secondary" onclick="refreshMap()">  
+                                    <i class="fas fa-sync-alt"></i> Refresh  
+                                </button>  
+                            </div>  
+                        </div>  
+                    </div>  
+                      
+                    <div class="col-lg-4">  
+                        <div class="metric-card p-3 h-100">  
+                            <h6 class="mb-3">CRI Components</h6>  
+                            <div class="mb-3">  
+                                <div class="d-flex justify-content-between mb-1">  
+                                    <small>Social Cohesion</small>  
+                                    <small class="fw-bold">82%</small>  
+                                </div>  
+                                <div class="progress" style="height: 6px;">  
+                                    <div class="progress-bar bg-success" style="width: 82%"></div>  
+                                </div>  
+                            </div>  
+                            <div class="mb-3">  
+                                <div class="d-flex justify-content-between mb-1">  
+                                    <small>Economic Inclusion</small>  
+                                    <small class="fw-bold">76%</small>  
+                                </div>  
+                                <div class="progress" style="height: 6px;">  
+                                    <div class="progress-bar bg-info" style="width: 76%"></div>  
+                                </div>  
+                            </div>  
+                            <div class="mb-3">  
+                                <div class="d-flex justify-content-between mb-1">  
+                                    <small>Conflict Resolution</small>  
+                                    <small class="fw-bold">81%</small>  
+                                </div>  
+                                <div class="progress" style="height: 6px;">  
+                                    <div class="progress-bar bg-warning" style="width: 81%"></div>  
+                                </div>  
+                            </div>  
+                            <div class="mb-3">  
+                                <div class="d-flex justify-content-between mb-1">  
+                                    <small>Institutional Trust</small>  
+                                    <small class="fw-bold">75%</small>  
+                                </div>  
+                                <div class="progress" style="height: 6px;">  
+                                    <div class="progress-bar bg-primary" style="width: 75%"></div>  
+                                </div>  
+                            </div>  
+                              
+                            <hr>  
+                              
+                            <h6 class="mb-3">Active ESS Alerts</h6>  
+                            <div id="alertsList">  
+                                <!-- Alerts will be populated here -->  
+                            </div>  
+                        </div>  
+                    </div>  
+                </div>  
+                  
+                <!-- Data Table -->  
+                <div class="row mt-3">  
+                    <div class="col-12">  
+                        <div class="metric-card p-3">  
+                            <div class="d-flex justify-content-between align-items-center mb-3">  
+                                <h6 class="mb-0">Community Status</h6>  
+                                <div class="input-group input-group-sm" style="width: 200px;">  
+                                    <input type="text" class="form-control" placeholder="Search communities..." id="searchCommunity">  
+                                    <button class="btn btn-outline-secondary" type="button">  
+                                        <i class="fas fa-search"></i>  
+                                    </button>  
+                                </div>  
+                            </div>  
+                            <div class="table-responsive">  
+                                <table class="table data-table">  
+                                    <thead>  
+                                        <tr>  
+                                            <th>Community</th>  
+                                            <th>Type</th>  
+                                            <th>CRI Score</th>  
+                                            <th>ESS Level</th>  
+                                            <th>Population</th>  
+                                            <th>Last Update</th>  
+                                            <th>Status</th>  
+                                        </tr>  
+                                    </thead>  
+                                    <tbody id="communityTable">  
+                                        <!-- Data will be populated by JavaScript -->  
+                                    </tbody>  
+                                </table>  
+                            </div>  
+                        </div>  
+                    </div>  
+                </div>  
+            </div>  
+              
+            <!-- Map Tab -->  
+            <div id="mapTab" class="d-none">  
+                <div class="metric-card p-3">  
+                    <h4 class="mb-3"><i class="fas fa-map-marked-alt me-2"></i>Interactive CRI Heatmap</h4>  
+                    <div id="fullMap" style="height: 600px; border-radius: 8px;"></div>  
+                </div>  
+            </div>  
+              
+            <!-- Alerts Tab -->  
+            <div id="alertsTab" class="d-none">  
+                <div class="metric-card p-3">  
+                    <h4 class="mb-3"><i class="fas fa-exclamation-triangle me-2"></i>Ethical Stress Signal Management</h4>  
+                    <div id="essAlertsContainer">  
+                        <!-- Alerts will be loaded here -->  
+                    </div>  
+                </div>  
+            </div>  
+              
+            <!-- Network Tab -->  
+            <div id="networkTab" class="d-none">  
+                <div class="metric-card p-3">  
+                    <h4 class="mb-3"><i class="fas fa-project-diagram me-2"></i>UDU Network Analysis</h4>  
+                    <div id="networkGraph" style="height: 500px; background: #f8f9fa; border-radius: 8px;" class="d-flex align-items-center justify-content-center">  
+                        <div class="text-center">  
+                            <i class="fas fa-project-diagram fa-3x text-muted mb-3"></i>  
+                            <p class="text-muted">Network visualization would appear here</p>  
+                            <p class="small text-muted">(Requires D3.js library for full functionality)</p>  
+                        </div>  
+                    </div>  
+                </div>  
+            </div>  
+              
+            <!-- Interventions Tab -->  
+            <div id="interventionsTab" class="d-none">  
+                <div class="metric-card p-3">  
+                    <h4 class="mb-3"><i class="fas fa-tasks me-2"></i>TPI Intervention Tracker</h4>  
+                    <div id="interventionsContainer">  
+                        <!-- Interventions will be loaded here -->  
+                    </div>  
+                </div>  
+            </div>  
+              
+            <!-- Integrity Lab Tab -->  
+            <div id="labTab" class="d-none">  
+                <div class="metric-card p-3">  
+                    <h4 class="mb-3"><i class="fas fa-flask me-2"></i>Integrity Lab - PEIR Reviews</h4>  
+                    <div id="integrityLabContent">  
+                        <!-- Integrity Lab content -->  
+                    </div>  
+                </div>  
+            </div>  
+        </div>  
+    </div>  
+      
+    <!-- Mobile Bottom Navigation -->  
+    <div class="d-block d-md-none fixed-bottom bg-white border-top">  
+        <div class="row text-center py-2">  
+            <div class="col">  
+                <button class="btn btn-sm" onclick="switchTab('dashboard')">  
+                    <i class="fas fa-chart-line d-block"></i>  
+                    <small>Dashboard</small>  
+                </button>  
+            </div>  
+            <div class="col">  
+                <button class="btn btn-sm" onclick="switchTab('map')">  
+                    <i class="fas fa-map d-block"></i>  
+                    <small>Map</small>  
+                </button>  
+            </div>  
+            <div class="col">  
+                <button class="btn btn-sm position-relative" onclick="switchTab('alerts')">  
+                    <i class="fas fa-bell d-block"></i>  
+                    <small>Alerts</small>  
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="mobileAlertCount">3</span>  
+                </button>  
+            </div>  
+            <div class="col">  
+                <button class="btn btn-sm" onclick="switchTab('network')">  
+                    <i class="fas fa-network-wired d-block"></i>  
+                    <small>Network</small>  
+                </button>  
+            </div>  
+        </div>  
+    </div>  
+</div>  
+  
+<!-- Modal for Community Details -->  
+<div class="modal fade" id="communityModal" tabindex="-1">  
+    <div class="modal-dialog modal-lg">  
+        <div class="modal-content">  
+            <div class="modal-header">  
+                <h5 class="modal-title" id="modalTitle">Community Details</h5>  
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>  
+            </div>  
+            <div class="modal-body" id="modalBody">  
+                <!-- Content will be loaded here -->  
+            </div>  
+        </div>  
+    </div>  
+</div>  
+  
+<!-- JavaScript Libraries -->  
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>  
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>  
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>  
+  
+<script>  
+    // ====================  
+    // GLOBAL VARIABLES  
+    // ====================  
+    let map;  
+    let fullMap;  
+    let currentTab = 'dashboard';  
+    let communities = [];  
+    let alerts = [];  
+    let interventions = [];  
+      
+    // ====================  
+    // INITIALIZATION  
+    // ====================  
+    document.addEventListener('DOMContentLoaded', function() {  
+        initializeData();  
+        initializeMap();  
+        renderAlertsList();  
+        renderCommunityTable();  
+        updateLastUpdated();  
+          
+        // Auto-refresh every 30 seconds  
+        setInterval(updateLastUpdated, 30000);  
+    });  
+      
+    // ====================  
+    // DATA INITIALIZATION  
+    // ====================  
+    function initializeData() {  
+        // Sample communities data  
+        communities = [  
+            { id: 1, name: 'Northern District', type: 'Urban', cri: 85, essLevel: 'Low', population: 25400, lastUpdate: '2 hours ago', lat: 31.8, lng: 34.5, status: 'Stable' },  
+            { id: 2, name: 'Eastern Corridor', type: 'Rural', cri: 45, essLevel: 'High', population: 18200, lastUpdate: '1 hour ago', lat: 31.5, lng: 34.2, status: 'Critical' },  
+            { id: 3, name: 'Western Border', type: 'Border', cri: 65, essLevel: 'Medium', population: 9700, lastUpdate: '3 hours ago', lat: 31.6, lng: 34.8, status: 'Monitoring' },  
+            { id: 4, name: 'Central Valley', type: 'Urban', cri: 78, essLevel: 'Low', population: 32100, lastUpdate: '5 hours ago', lat: 31.7, lng: 34.6, status: 'Stable' },  
+            { id: 5, name: 'Southern Plains', type: 'Rural', cri: 52, essLevel: 'Medium', population: 12500, lastUpdate: '6 hours ago', lat: 31.4, lng: 34.3, status: 'Warning' },  
+            { id: 6, name: 'Coastal Region', type: 'Urban', cri: 88, essLevel: 'Low', population: 28700, lastUpdate: '1 day ago', lat: 31.9, lng: 34.7, status: 'Stable' }  
+        ];  
+          
+        // Sample alerts data  
+        alerts = [  
+            { id: 1, community: 'Eastern Corridor', type: 'Economic', severity: 'High', description: 'Unemployment rate spiked by 32%', detected: '2 hours ago', status: 'Active' },  
+            { id: 2, community: 'Western Border', type: 'Social', severity: 'Medium', description: 'Inter-community tensions rising', detected: '5 hours ago', status: 'Active' },  
+            { id: 3, community: 'Southern Plains', type: 'Environmental', severity: 'Medium', description: 'Water scarcity reported', detected: '1 day ago', status: 'Acknowledged' }  
+        ];  
+          
+        // Sample interventions  
+        interventions = [  
+            { id: 1, title: 'Economic Dialogue - Zone B', type: 'Economic', status: 'Planning', progress: 30, assigned: 'Team A' },  
+            { id: 2, title: "Women's Peace Circle", type: 'Social', status: 'Active', progress: 65, assigned: 'Team B' },  
+            { id: 3, title: 'Youth Sports Tournament', type: 'Social', status: 'Active', progress: 80, assigned: 'Team C' },  
+            { id: 4, title: 'Mediation Training', type: 'Capacity', status: 'Monitoring', progress: 85, assigned: 'Team A' }  
+        ];  
+    }  
+      
+    // ====================  
+    // MAP INITIALIZATION  
+    // ====================  
+    function initializeMap() {  
+        // Main dashboard map  
+        map = L.map('map').setView([31.6, 34.5], 8);  
+          
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {  
+            attribution: '© OpenStreetMap contributors'  
+        }).addTo(map);  
+          
+        // Add community markers  
+        communities.forEach(comm => {  
+            let color;  
+            if (comm.cri >= 70) color = 'green';  
+            else if (comm.cri >= 50) color = 'orange';  
+            else color = 'red';  
+              
+            let marker = L.circleMarker([comm.lat, comm.lng], {  
+                color: color,  
+                fillColor: color,  
+                fillOpacity: 0.7,  
+                radius: 10  
+            }).addTo(map);  
+              
+            marker.bindPopup(`  
+                <div style="min-width: 200px;">  
+                    <h6><strong>${comm.name}</strong></h6>  
+                    <hr style="margin: 5px 0;">  
+                    <table style="width:100%; font-size:12px;">  
+                        <tr><td><strong>CRI:</strong></td><td><span class="${getCRIClass(comm.cri)}">${comm.cri}</span></td></tr>  
+                        <tr><td><strong>Type:</strong></td><td>${comm.type}</td></tr>  
+                        <tr><td><strong>Population:</strong></td><td>${comm.population.toLocaleString()}</td></tr>  
+                        <tr><td><strong>ESS Level:</strong></td><td>${comm.essLevel}</td></tr>  
+                        <tr><td><strong>Status:</strong></td><td>${comm.status}</td></tr>  
+                    </table>  
+                    <hr style="margin: 5px 0;">  
+                    <button class="btn btn-sm btn-primary w-100" onclick="showCommunityDetails(${comm.id})">View Details</button>  
+                </div>  
+            `);  
+        });  
+          
+        // Full map for map tab  
+        fullMap = L.map('fullMap').setView([31.6, 34.5], 8);  
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {  
+            attribution: '© OpenStreetMap contributors'  
+        }).addTo(fullMap);  
+          
+        // Add heatmap layer to full map  
+        let heatmapLayer = L.layerGroup();  
+        communities.forEach(comm => {  
+            let color = getCRIColor(comm.cri);  
+            L.circle([comm.lat, comm.lng], {  
+                color: color,  
+                fillColor: color,  
+                fillOpacity: 0.5,  
+                radius: 5000  
+            }).addTo(heatmapLayer);  
+        });  
+        heatmapLayer.addTo(fullMap);  
+    }  
+      
+    // ====================  
+    // TAB MANAGEMENT  
+    // ====================  
+    function switchTab(tabName) {  
+        // Hide all tabs  
+        document.querySelectorAll('[id$="Tab"]').forEach(tab => {  
+            tab.classList.add('d-none');  
+        });  
+          
+        // Show selected tab  
+        document.getElementById(tabName + 'Tab').classList.remove('d-none');  
+          
+        // Update active nav links  
+        document.querySelectorAll('.nav-link').forEach(link => {  
+            link.classList.remove('active');  
+        });  
+          
+        // Set current tab  
+        currentTab = tabName;  
+          
+        // Update tab-specific content  
+        switch(tabName) {  
+            case 'dashboard':  
+                renderAlertsList();  
+                renderCommunityTable();  
+                break;  
+            case 'alerts':  
+                renderAlertsTab();  
+                break;  
+            case 'network':  
+                renderNetworkTab();  
+                break;  
+            case 'interventions':  
+                renderInterventionsTab();  
+                break;  
+            case 'lab':  
+                renderIntegrityLab();  
+                break;  
+            case 'map':  
+                setTimeout(() => fullMap.invalidateSize(), 100);  
+                break;  
+        }  
+    }  
+      
+    // ====================  
+    // RENDER FUNCTIONS  
+    // ====================  
+    function renderAlertsList() {  
+        const container = document.getElementById('alertsList');  
+        if (!container) return;  
+          
+        container.innerHTML = '';  
+          
+        alerts.slice(0, 3).forEach(alert => {  
+            const severityClass = alert.severity === 'High' ? 'alert-high' :   
+                                alert.severity === 'Medium' ? 'alert-medium' : 'alert-low';  
+              
+            container.innerHTML += `  
+                <div class="alert-card p-2 mb-2 ${severityClass}" onclick="showAlertDetails(${alert.id})">  
+                    <div class="d-flex justify-content-between align-items-start">  
+                        <div>  
+                            <strong>${alert.community}</strong>  
+                            <small class="d-block text-muted">${alert.type} Alert</small>  
+                        </div>  
+                        <span class="badge ${alert.severity === 'High' ? 'bg-danger' : 'bg-warning'}">  
+                            ${alert.severity}  
+                        </span>  
+                    </div>  
+                    <p class="mb-1 small">${alert.description}</p>  
+                    <small class="text-muted">Detected: ${alert.detected}</small>  
+                </div>  
+            `;  
+        });  
+          
+        // Update alert counts  
+        const activeAlerts = alerts.filter(a => a.status === 'Active').length;  
+        document.getElementById('alertCount').textContent = activeAlerts;  
+        document.getElementById('mobileAlertCount').textContent = activeAlerts;  
+    }  
+      
+    function renderCommunityTable() {  
+        const container = document.getElementById('communityTable');  
+        if (!container) return;  
+          
+        container.innerHTML = '';  
+          
+        communities.forEach(comm => {  
+            const criClass = getCRIClass(comm.cri);  
+            const criBadge = getCRIBadge(comm.cri);  
+              
+            container.innerHTML += `  
+                <tr onclick="showCommunityDetails(${comm.id})">  
+                    <td><strong>${comm.name}</strong></td>  
+                    <td>${comm.type}</td>  
+                    <td><span class="${criClass} fw-bold">${comm.cri}</span></td>  
+                    <td><span class="badge ${comm.essLevel === 'High' ? 'bg-danger' : comm.essLevel === 'Medium' ? 'bg-warning' : 'bg-success'}">${comm.essLevel}</span></td>  
+                    <td>${comm.population.toLocaleString()}</td>  
+                    <td>${comm.lastUpdate}</td>  
+                    <td><span class="badge ${comm.status === 'Stable' ? 'bg-success' : comm.status === 'Critical' ? 'bg-danger' : 'bg-warning'}">${comm.status}</span></td>  
+                </tr>  
+            `;  
+        });  
+    }  
+      
+    function renderAlertsTab() {  
+        const container = document.getElementById('essAlertsContainer');  
+        if (!container) return;  
+          
+        container.innerHTML = `  
+            <div class="mb-3">  
+                <button class="btn btn-primary btn-sm" onclick="addESSAlert()">  
+                    <i class="fas fa-plus me-1"></i>Add New Alert  
+                </button>  
+                <button class="btn btn-outline-secondary btn-sm ms-2" onclick="exportAlerts()">  
+                    <i class="fas fa-download me-1"></i>Export Alerts  
+                </button>  
+            </div>  
+            <div class="table-responsive">  
+                <table class="table table-sm">  
+                    <thead>  
+                        <tr>  
+                            <th>Community</th>  
+                            <th>Type</th>  
+                            <th>Severity</th>  
+                            <th>Description</th>  
+                            <th>Detected</th>  
+                            <th>Status</th>  
+                            <th>Actions</th>  
+                        </tr>  
+                    </thead>  
+                    <tbody>  
+                        ${alerts.map(alert => `  
+                            <tr class="${alert.severity === 'High' ? 'table-danger' : alert.severity === 'Medium' ? 'table-warning' : ''}">  
+                                <td>${alert.community}</td>  
+                                <td>${alert.type}</td>  
+                                <td><span class="badge ${alert.severity === 'High' ? 'bg-danger' : 'bg-warning'}">${alert.severity}</span></td>  
+                                <td>${alert.description}</td>  
+                                <td>${alert.detected}</td>  
+                                <td><span class="badge ${alert.status === 'Active' ? 'bg-danger' : 'bg-info'}">${alert.status}</span></td>  
+                                <td>  
+                                    <button class="btn btn-sm btn-outline-primary" onclick="acknowledgeAlert(${alert.id})">Acknowledge</button>  
+                                </td>  
+                            </tr>  
+                        `).join('')}  
+                    </tbody>  
+                </table>  
+            </div>  
+        `;  
+    }  
+      
+    function renderInterventionsTab() {  
+        const container = document.getElementById('interventionsContainer');  
+        if (!container) return;  
+          
+        container.innerHTML = `  
+            <div class="mb-3">  
+                <button class="btn btn-primary btn-sm" onclick="addIntervention()">  
+                    <i class="fas fa-plus me-1"></i>Add Intervention  
+                </button>  
+                <div class="btn-group btn-group-sm ms-2">  
+                    <button class="btn btn-outline-secondary">All</button>  
+                    <button class="btn btn-outline-secondary">Active</button>  
+                    <button class="btn btn-outline-secondary">Completed</button>  
+                </div>  
+            </div>  
+            <div class="row">  
+                ${interventions.map(intervention => `  
+                    <div class="col-md-6 mb-3">  
+                        <div class="card h-100">  
+                            <div class="card-body">  
+                                <h6 class="card-title">${intervention.title}</h6>  
+                                <p class="card-text small text-muted">Type: ${intervention.type}</p>  
+                                <div class="mb-2">  
+                                    <small>Progress</small>  
+                                    <div class="progress" style="height: 8px;">  
+                                        <div class="progress-bar ${intervention.progress >= 80 ? 'bg-success' : 'bg-warning'}" style="width: ${intervention.progress}%"></div>  
+                                    </div>  
+                                    <div class="d-flex justify-content-between mt-1">  
+                                        <small>${intervention.progress}%</small>  
+                                        <small>${intervention.status}</small>  
+                                    </div>  
+                                </div>  
+                                <div class="d-flex justify-content-between align-items-center">  
+                                    <small>Assigned to: ${intervention.assigned}</small>  
+                                    <button class="btn btn-sm btn-outline-primary" onclick="viewIntervention(${intervention.id})">Details</button>  
+                                </div>  
+                            </div>  
+                        </div>  
+                    </div>  
+                `).join('')}  
+            </div>  
+        `;  
+    }  
+      
+    function renderIntegrityLab() {  
+        const container = document.getElementById('integrityLabContent');  
+        if (!container) return;  
+          
+        container.innerHTML = `  
+            <div class="mb-3">  
+                <button class="btn btn-primary btn-sm" onclick="createPEIR()">  
+                    <i class="fas fa-plus me-1"></i>New PEIR Review  
+                </button>  
+            </div>  
+            <div class="row">  
+                <div class="col-md-4">  
+                    <div class="card mb-3">  
+                        <div class="card-body">  
+                            <h6 class="card-title">Pattern Recognition</h6>  
+                            <div class="mb-2">  
+                                <small>Arts-based interventions</small>  
+                                <span class="badge bg-success float-end">High Impact</span>  
+                            </div>  
+                            <div class="mb-2">  
+                                <small>Economic dialogues</small>  
+                                <span class="badge bg-info float-end">Medium Impact</span>  
+                            </div>  
+                            <div>  
+                                <small>Capacity training</small>  
+                                <span class="badge bg-success float-end">High Impact</span>  
+                            </div>  
+                        </div>  
+                    </div>  
+                </div>  
+                <div class="col-md-4">  
+                    <div class="card mb-3">  
+                        <div class="card-body">  
+                            <h6 class="card-title">Ethical Compliance</h6>  
+                            <div class="mb-2">  
+                                <small>Community Consent</small>  
+                                <span class="badge bg-success float-end">98%</span>  
+                            </div>  
+                            <div class="mb-2">  
+                                <small>Do No Harm</small>  
+                                <span class="badge bg-success float-end">95%</span>  
+                            </div>  
+                            <div>  
+                                <small>Transparency</small>  
+                                <span class="badge bg-warning float-end">87%</span>  
+                            </div>  
+                        </div>  
+                    </div>  
+                </div>  
+                <div class="col-md-4">  
+                    <div class="card mb-3">  
+                        <div class="card-body">  
+                            <h6 class="card-title">System Learning</h6>  
+                            <div class="mb-2">  
+                                <small>Total PEIRs: <strong>24</strong></small>  
+                            </div>  
+                            <div class="mb-2">  
+                                <small>Avg Integrity Score: <strong>4.3/5</strong></small>  
+                            </div>  
+                            <div>  
+                                <small>Patterns Identified: <strong>12</strong></small>  
+                            </div>  
+                        </div>  
+                    </div>  
+                </div>  
+            </div>  
+            <div class="card">  
+                <div class="card-body">  
+                    <h6>Recent PEIR Reviews</h6>  
+                    <div class="table-responsive">  
+                        <table class="table table-sm">  
+                            <thead>  
+                                <tr>  
+                                    <th>Intervention</th>  
+                                    <th>CRI Impact</th>  
+                                    <th>Score</th>  
+                                    <th>Date</th>  
+                                </tr>  
+                            </thead>  
+                            <tbody>  
+                                <tr><td>Youth Peace Festival</td><td><span class="badge bg-success">+12%</span></td><td>4.5/5</td><td>Jan 15</td></tr>  
+                                <tr><td>Economic Dialogue</td><td><span class="badge bg-info">+8%</span></td><td>4.0/5</td><td>Jan 20</td></tr>  
+                                <tr><td>Women's Peace Circle</td><td><span class="badge bg-success">+9%</span></td><td>4.8/5</td><td>Jan 25</td></tr>  
+                            </tbody>  
+                        </table>  
+                    </div>  
+                </div>  
+            </div>  
+        `;  
+    }  
+      
+    function renderNetworkTab() {  
+        // This is a placeholder for network visualization  
+        const container = document.getElementById('networkGraph');  
+        container.innerHTML = `  
+            <div class="text-center p-4">  
+                <i class="fas fa-project-diagram fa-4x text-muted mb-3"></i>  
+                <h5>UDU Network Visualization</h5>  
+                <p class="text-muted">Network graph would display stakeholder relationships here</p>  
+                <div class="mt-3">  
+                    <div class="row">  
+                        <div class="col">  
+                            <div class="card">  
+                                <div class="card-body">  
+                                    <h6 class="card-title">Network Stats</h6>  
+                                    <p class="mb-1">Nodes: <strong>24</strong></p>  
+                                    <p class="mb-1">Connections: <strong>56</strong></p>  
+                                    <p class="mb-1">Density: <strong>78%</strong></p>  
+                                </div>  
+                            </div>  
+                        </div>  
+                        <div class="col">  
+                            <div class="card">  
+                                <div class="card-body">  
+                                    <h6 class="card-title">Stakeholder Groups</h6>  
+                                    <p class="mb-1">Spiritual: <strong>8</strong></p>  
+                                    <p class="mb-1">Social: <strong>12</strong></p>  
+                                    <p class="mb-1">Economic: <strong>4</strong></p>  
+                                </div>  
+                            </div>  
+                        </div>  
+                    </div>  
+                </div>  
+            </div>  
+        `;  
+    }  
+      
+    // ====================  
+    // HELPER FUNCTIONS  
+    // ====================  
+    function getCRIClass(cri) {  
+        if (cri >= 70) return 'cri-high';  
+        if (cri >= 50) return 'cri-medium';  
+        return 'cri-low';  
+    }  
+      
+    function getCRIColor(cri) {  
+        if (cri >= 70) return '#28b463';  
+        if (cri >= 50) return '#f39c12';  
+        return '#e74c3c';  
+    }  
+      
+    function getCRIBadge(cri) {  
+        if (cri >= 70) return 'badge-cri-high';  
+        if (cri >= 50) return 'badge-cri-medium';  
+        return 'badge-cri-low';  
+    }  
+      
+    function updateLastUpdated() {  
+        const now = new Date();  
+        const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});  
+        document.getElementById('lastUpdated').textContent = timeString;  
+    }  
+      
+    function switchMapView(view) {  
+        // This would switch map layers in a real implementation  
+        showAlert(`Switched to ${view} view`);  
+    }  
+      
+    function refreshMap() {  
+        map.invalidateSize();  
+        showAlert('Map refreshed successfully');  
+    }  
+      
+    // ====================  
+    // ACTION FUNCTIONS  
+    // ====================  
+    function showAlert(message) {  
+        // Create alert element  
+        const alertDiv = document.createElement('div');  
+        alertDiv.className = 'alert alert-info alert-dismissible fade show position-fixed';  
+        alertDiv.style.cssText = `  
+            top: 70px;  
+            right: 20px;  
+            z-index: 9999;  
+            min-width: 250px;  
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);  
+        `;  
+        alertDiv.innerHTML = `  
+            ${message}  
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>  
+        `;  
+          
+        document.body.appendChild(alertDiv);  
+          
+        // Auto remove after 3 seconds  
+        setTimeout(() => {  
+            if (alertDiv.parentNode) {  
+                alertDiv.remove();  
+            }  
+        }, 3000);  
+    }  
+      
+    function showCommunityDetails(id) {  
+        const community = communities.find(c => c.id === id);  
+        if (!community) return;  
+          
+        document.getElementById('modalTitle').textContent = community.name;  
+        document.getElementById('modalBody').innerHTML = `  
+            <div class="row">  
+                <div class="col-md-6">  
+                    <h6>Basic Information</h6>  
+                    <table class="table table-sm">  
+                        <tr><td><strong>Type:</strong></td><td>${community.type}</td></tr>  
+                        <tr><td><strong>Population:</strong></td><td>${community.population.toLocaleString()}</td></tr>  
+                        <tr><td><strong>CRI Score:</strong></td><td><span class="${getCRIClass(community.cri)} fw-bold">${community.cri}</span></td></tr>  
+                        <tr><td><strong>ESS Level:</strong></td><td><span class="badge ${community.essLevel === 'High' ? 'bg-danger' : community.essLevel === 'Medium' ? 'bg-warning' : 'bg-success'}">${community.essLevel}</span></td></tr>  
+                        <tr><td><strong>Status:</strong></td><td><span class="badge ${community.status === 'Stable' ? 'bg-success' : community.status === 'Critical' ? 'bg-danger' : 'bg-warning'}">${community.status}</span></td></tr>  
+                    </table>  
+                </div>  
+                <div class="col-md-6">  
+                    <h6>Actions</h6>  
+                    <div class="d-grid gap-2">  
+                        <button class="btn btn-primary" onclick="createInterventionForCommunity(${id})">  
+                            <i class="fas fa-plus me-1"></i>Create Intervention  
+                        </button>  
+                        <button class="btn btn-warning" onclick="updateCRI(${id})">  
+                            <i class="fas fa-chart-line me-1"></i>Update CRI Data  
+                        </button>  
+                        <button class="btn btn-info" onclick="viewCommunityHistory(${id})">  
+                            <i class="fas fa-history me-1"></i>View History  
+                        </button>  
+                    </div>  
+                </div>  
+            </div>  
+            <hr>  
+            <h6>Recent Activity</h6>  
+            <div class="alert alert-info">  
+                <i class="fas fa-info-circle me-1"></i>  
+                ${community.status === 'Critical' ? 'High priority attention needed. ESS levels are elevated.' :  
+                  community.status === 'Warning' ? 'Monitoring required. CRI below optimal levels.' :  
+                  'Community is stable. Continue regular monitoring.'}  
+            </div>  
+        `;  
+          
+        const modal = new bootstrap.Modal(document.getElementById('communityModal'));  
+        modal.show();  
+    }  
+      
+    function showAlertDetails(id) {  
+        const alert = alerts.find(a => a.id === id);  
+        if (!alert) return;  
+          
+        document.getElementById('modalTitle').textContent = `ESS Alert: ${alert.community}`;  
+        document.getElementById('modalBody').innerHTML = `  
+            <div class="alert ${alert.severity === 'High' ? 'alert-danger' : 'alert-warning'}">  
+                <h6><i class="fas fa-exclamation-triangle me-1"></i>${alert.severity} Severity Alert</h6>  
+            </div>  
+            <table class="table">  
+                <tr><td><strong>Community:</strong></td><td>${alert.community}</td></tr>  
+                <tr><td><strong>Alert Type:</strong></td><td>${alert.type}</td></tr>  
+                <tr><td><strong>Description:</strong></td><td>${alert.description}</td></tr>  
+                <tr><td><strong>Detected:</strong></td><td>${alert.detected}</td></tr>  
+                <tr><td><strong>Current Status:</strong></td><td><span class="badge ${alert.status === 'Active' ? 'bg-danger' : 'bg-info'}">${alert.status}</span></td></tr>  
+            </table>  
+            <hr>  
+            <h6>Recommended Actions</h6>  
+            <div class="card">  
+                <div class="card-body">  
+                    <p>Based on UDU/TPI protocols for ${alert.type.toLowerCase()} stress signals:</p>  
+                    <ul>  
+                        <li>Initiate community dialogue within 24 hours</li>  
+                        <li>Deploy mediation team to assess situation</li>  
+                        <li>Schedule emergency Peace Stewardship Council meeting</li>  
+                        <li>Mobilize resource response if needed</li>  
+                    </ul>  
+                    <div class="d-grid gap-2">  
+                        <button class="btn btn-primary" onclick="acknowledgeAlert(${id})">  
+                            <i class="fas fa-check me-1"></i>Acknowledge Alert  
+                        </button>  
+                        <button class="btn btn-success" onclick="createInterventionForAlert(${id})">  
+                            <i class="fas fa-tasks me-1"></i>Create Intervention Plan  
+                        </button>  
+                    </div>  
+                </div>  
+            </div>  
+        `;  
+          
+        const modal = new bootstrap.Modal(document.getElementById('communityModal'));  
+        modal.show();  
+    }  
+      
+    function addESSAlert() {  
+        showAlert('New ESS Alert form would open here');  
+        // In a full implementation, this would open a form  
+    }  
+      
+    function addIntervention() {  
+        showAlert('New Intervention form would open here');  
+    }  
+      
+    function acknowledgeAlert(id) {  
+        const alert = alerts.find(a => a.id === id);  
+        if (alert) {  
+            alert.status = 'Acknowledged';  
+            showAlert(`Alert #${id} acknowledged`);  
+            renderAlertsList();  
+            if (currentTab === 'alerts') {  
+                renderAlertsTab();  
+            }  
+        }  
+    }  
+      
+    function exportData() {  
+        showAlert('Data export initiated. Download will begin shortly.');  
+    }  
+      
+    function exportAlerts() {  
+        showAlert('Alerts exported successfully');  
+    }  
+      
+    function createPEIR() {  
+        showAlert('PEIR (Peace-Enhanced Integrity Review) form would open here');  
+    }  
+      
+    function viewIntervention(id) {  
+        showAlert(`Viewing intervention #${id} details`);  
+    }  
+      
+    function createInterventionForCommunity(id) {  
+        const community = communities.find(c => c.id === id);  
+        showAlert(`Creating intervention for ${community.name}`);  
+    }  
+      
+    function createInterventionForAlert(id) {  
+        const alert = alerts.find(a => a.id === id);  
+        showAlert(`Creating intervention plan for ${alert.community} alert`);  
+    }  
+      
+    function updateCRI(id) {  
+        const community = communities.find(c => c.id === id);  
+        showAlert(`Updating CRI data for ${community.name}`);  
+    }  
+      
+    function viewCommunityHistory(id) {  
+        const community = communities.find(c => c.id === id);  
+        showAlert(`Viewing historical data for ${community.name}`);  
+    }  
+</script>
+
+</body>  
+</html>"
