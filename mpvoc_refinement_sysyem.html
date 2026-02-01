@@ -1,0 +1,283 @@
+# mpvoc_refinement_system.py
+import json
+import os
+import pandas as pd
+from datetime import datetime
+from sentence_transformers import SentenceTransformer, util
+import torch
+import streamlit as st
+from collections import defaultdict
+
+class MPVOCRefiner:
+    """Interactive system for refining MPVOC with community-specific terminology"""
+    
+    def __init__(self, community_name):
+        self.community = community_name
+        self.model = SentenceTransformer('all-MiniLM-L6-v2')
+        self.base_mpvoc = self._load_base_mpvoc()
+        self.community_mpvoc = self._load_community_mpvoc()
+        self.canonical_texts = []
+        self.term_validation_log = []
+        
+    def _load_base_mpvoc(self):
+        """Load foundational MPT-SST metaphysical vocabulary"""
+        return {
+            "resonant": [
+                "unity", "compassion", "shared destiny", "forgiveness", "dialogue",
+                "interdependence", "dignity", "reconciliation", "regeneration",
+                "collective good", "harmony", "understanding", "patience",
+                "gratitude", "humility", "service", "stewardship", "resilience",
+                "co-creation", "sacredness", "wholeness", "belonging"
+            ],
+            "dissonant": [
+                "exclusion", "hereditary enemy", "purification", "supremacy",
+                "inevitable conflict", "utter defeat", "permanent threat",
+                "cleansing", "traitor", "infidel", "apostate", "impure",
+                "unclean", "defilement", "annihilation", "dominance",
+                "subjugation", "eradication", "vengeance", "retribution"
+            ],
+            "neutral": [
+                "justice", "truth", "authority", "tradition", "boundary",
+                "discipline", "correction", "resistance", "protection"
+            ]
+        }
+    
+    def _load_community_mpvoc(self):
+        """Load or create community-specific MPVOC"""
+        filename = f"mpvoc_{self.community.lower().replace(' ', '_')}.json"
+        if os.path.exists(filename):
+            with open(filename, 'r') as f:
+                return json.load(f)
+        return {
+            "community_name": self.community,
+            "created": datetime.now().isoformat(),
+            "resonant": [],
+            "dissonant": [],
+            "contextual": {},  # Terms that change meaning based on context
+            "sacred_terms": [],  # Community-specific sacred language
+            "forbidden_terms": [],  # Historically harmful terms
+            "sources": []
+        }
+    
+    def add_canonical_text(self, text, source_type, source_name):
+        """Add community texts for analysis"""
+        self.canonical_texts.append({
+            "text": text,
+            "type": source_type,  # "sermon", "prayer", "proverb", "agreement"
+            "source": source_name,
+            "added": datetime.now().isoformat()
+        })
+    
+    def extract_community_terms(self, top_n=50):
+        """Extract unique terms from canonical texts"""
+        from sklearn.feature_extraction.text import CountVectorizer
+        import nltk
+        from nltk.corpus import stopwords
+        
+        # Ensure NLTK data is available
+        try:
+            nltk.data.find('tokenizers/punkt')
+        except:
+            nltk.download('punkt')
+            nltk.download('stopwords')
+        
+        all_texts = " ".join([t["text"] for t in self.canonical_texts])
+        
+        # Extract n-grams (1-3 words)
+        vectorizer = CountVectorizer(ngram_range=(1, 3), 
+                                    stop_words=stopwords.words('english'),
+                                    max_features=top_n*2)
+        X = vectorizer.fit_transform([all_texts])
+        terms = vectorizer.get_feature_names_out()
+        frequencies = X.toarray()[0]
+        
+        # Get most frequent terms
+        term_freq = list(zip(terms, frequencies))
+        term_freq.sort(key=lambda x: x[1], reverse=True)
+        
+        return term_freq[:top_n]
+    
+    def analyze_term_semantics(self, term):
+        """Analyze term against base MPVOC for resonance/dissonance"""
+        term_embedding = self.model.encode(term, convert_to_tensor=True)
+        
+        # Compare with base resonant terms
+        resonant_embeddings = self.model.encode(self.base_mpvoc["resonant"], 
+                                                convert_to_tensor=True)
+        dissonant_embeddings = self.model.encode(self.base_mpvoc["dissonant"], 
+                                                 convert_to_tensor=True)
+        
+        res_sim = util.pytorch_cos_sim(term_embedding, resonant_embeddings)
+        dis_sim = util.pytorch_cos_sim(term_embedding, dissonant_embeddings)
+        
+        avg_res = torch.mean(res_sim).item()
+        avg_dis = torch.mean(dis_sim).item()
+        
+        # Determine closest base terms
+        closest_res_idx = torch.argmax(res_sim).item()
+        closest_dis_idx = torch.argmax(dis_sim).item()
+        
+        return {
+            "term": term,
+            "resonance_score": avg_res,
+            "dissonance_score": avg_dis,
+            "net_resonance": avg_res - avg_dis,
+            "closest_resonant": self.base_mpvoc["resonant"][closest_res_idx],
+            "closest_dissonant": self.base_mpvoc["dissonant"][closest_dis_idx],
+            "suggested_category": "resonant" if avg_res > avg_dis else "dissonant" if avg_dis > avg_res else "contextual"
+        }
+    
+    def validate_with_community_elders(self, terms_analysis):
+        """Create validation interface for community elders"""
+        validation_results = []
+        
+        print(f"\n{'='*60}")
+        print(f"MPVOC VALIDATION FOR {self.community.upper()}")
+        print(f"{'='*60}")
+        
+        for term_data in terms_analysis:
+            print(f"\nTerm: {term_data['term']}")
+            print(f"Resonance Score: {term_data['resonance_score']:.3f}")
+            print(f"Dissonance Score: {term_data['dissonance_score']:.3f}")
+            print(f"Suggested: {term_data['suggested_category'].upper()}")
+            print(f"Closest to resonant: '{term_data['closest_resonant']}'")
+            print(f"Closest to dissonant: '{term_data['closest_dissonant']}'")
+            
+            # Get elder input
+            while True:
+                response = input("\nYour assessment (r=resonant, d=dissonant, c=contextual, s=sacred, f=forbidden, skip=skip): ").lower()
+                if response in ['r', 'd', 'c', 's', 'f', 'skip']:
+                    break
+                print("Invalid input. Please use r, d, c, s, f, or skip")
+            
+            if response != 'skip':
+                validation_results.append({
+                    **term_data,
+                    "elder_assessment": {
+                        'r': 'resonant',
+                        'd': 'dissonant', 
+                        'c': 'contextual',
+                        's': 'sacred',
+                        'f': 'forbidden'
+                    }[response],
+                    "validated_by": "community_elder",
+                    "timestamp": datetime.now().isoformat()
+                })
+        
+        return validation_results
+    
+    def create_refined_mpvoc(self, validated_terms):
+        """Generate final refined MPVOC"""
+        for term_data in validated_terms:
+            category = term_data["elder_assessment"]
+            term = term_data["term"]
+            
+            if category == "resonant":
+                if term not in self.community_mpvoc["resonant"]:
+                    self.community_mpvoc["resonant"].append(term)
+            elif category == "dissonant":
+                if term not in self.community_mpvoc["dissonant"]:
+                    self.community_mpvoc["dissonant"].append(term)
+            elif category == "sacred":
+                if term not in self.community_mpvoc["sacred_terms"]:
+                    self.community_mpvoc["sacred_terms"].append(term)
+            elif category == "forbidden":
+                if term not in self.community_mpvoc["forbidden_terms"]:
+                    self.community_mpvoc["forbidden_terms"].append(term)
+            elif category == "contextual":
+                self.community_mpvoc["contextual"][term] = {
+                    "notes": "Meaning depends on context",
+                    "examples": []
+                }
+        
+        # Save refined MPVOC
+        filename = f"mpvoc_{self.community.lower().replace(' ', '_')}_refined.json"
+        self.community_mpvoc["last_updated"] = datetime.now().isoformat()
+        self.community_mpvoc["term_count"] = {
+            "resonant": len(self.community_mpvoc["resonant"]),
+            "dissonant": len(self.community_mpvoc["dissonant"]),
+            "sacred": len(self.community_mpvoc["sacred_terms"]),
+            "forbidden": len(self.community_mpvoc["forbidden_terms"]),
+            "contextual": len(self.community_mpvoc["contextual"])
+        }
+        
+        with open(filename, 'w') as f:
+            json.dump(self.community_mpvoc, f, indent=2, ensure_ascii=False)
+        
+        print(f"\n✓ Refined MPVOC saved to {filename}")
+        print(f"  - {self.community_mpvoc['term_count']['resonant']} resonant terms")
+        print(f"  - {self.community_mpvoc['term_count']['dissonant']} dissonant terms")
+        print(f"  - {self.community_mpvoc['term_count']['sacred']} sacred terms")
+        print(f"  - {self.community_mpvoc['term_count']['forbidden']} forbidden terms")
+        
+        return self.community_mpvoc
+
+# ===== EXECUTION =====
+if __name__ == "__main__":
+    print("\n" + "="*70)
+    print("MPVOC REFINEMENT PROCESS FOR COMMUNITY-SPECIFIC TERMINOLOGY")
+    print("="*70)
+    
+    # Step 1: Initialize with community name
+    community = input("\nEnter community name for MPVOC refinement: ").strip()
+    refiner = MPVOCRefiner(community)
+    
+    # Step 2: Load canonical texts
+    print(f"\nLoading canonical texts for {community}...")
+    # In production, this would load from files/database
+    sample_texts = [
+        ("Let us walk together in harmony, respecting each other's sacred paths.", "proverb", "Community Wisdom"),
+        ("Those who divide us are enemies of our shared future.", "sermon", "Elder Teaching"),
+        ("The land belongs to all who care for it with reverence.", "declaration", "Land Covenant")
+    ]
+    
+    for text, type_, source in sample_texts:
+        refiner.add_canonical_text(text, type_, source)
+    
+    # Step 3: Extract community-specific terms
+    print("\nExtracting community-specific terms...")
+    community_terms = refiner.extract_community_terms(top_n=20)
+    
+    # Step 4: Analyze term semantics
+    print("\nAnalyzing term semantics against base MPVOC...")
+    terms_analysis = []
+    for term, freq in community_terms:
+        analysis = refiner.analyze_term_semantics(term)
+        analysis["frequency"] = freq
+        terms_analysis.append(analysis)
+    
+    # Step 5: Validate with community elders
+    print("\n" + "="*70)
+    print("COMMUNITY ELDER VALIDATION REQUIRED")
+    print("Please have community elders assess each term:")
+    print("="*70)
+    
+    validated_terms = refiner.validate_with_community_elders(terms_analysis)
+    
+    # Step 6: Create refined MPVOC
+    if validated_terms:
+        refined_mpvoc = refiner.create_refined_mpvoc(validated_terms)
+        
+        # Generate report
+        report = {
+            "community": community,
+            "process_completed": datetime.now().isoformat(),
+            "canonical_texts_analyzed": len(refiner.canonical_texts),
+            "terms_validated": len(validated_terms),
+            "mpvoc_file": f"mpvoc_{community.lower().replace(' ', '_')}_refined.json",
+            "next_steps": [
+                "1. Deploy refined MPVOC to Linguistic Coherence Engine",
+                "2. Test with new community texts",
+                "3. Schedule quarterly MPVOC review"
+            ]
+        }
+        
+        with open(f"mpvoc_refinement_report_{community}.json", 'w') as f:
+            json.dump(report, f, indent=2)
+        
+        print("\n" + "="*70)
+        print("MPVOC REFINEMENT PROCESS COMPLETE")
+        print("="*70)
+        print(f"\nNext: Deploy dashboard with refined MPVOC for {community}")
+    else:
+        print("\nNo terms were validated. Process incomplete.")
