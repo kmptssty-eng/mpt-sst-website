@@ -1,0 +1,126 @@
+# trust_density_analytics_mvp.py
+import networkx as nx
+import matplotlib.pyplot as plt
+import numpy as np
+from collections import defaultdict
+
+class TrustDensityAnalyzer:
+    """
+    Simulates trust network analysis from interaction data.
+    In production, this would ingest actual communication/transaction logs.
+    """
+    
+    def __init__(self):
+        self.graph = nx.Graph()
+        
+    def add_interactions(self, interactions):
+        """
+        interactions: list of tuples (person_a, person_b, weight, timestamp)
+        weight: interaction frequency or value (1-10 scale)
+        """
+        for a, b, weight, _ in interactions:
+            if self.graph.has_edge(a, b):
+                # Update existing edge with average weight
+                current_weight = self.graph[a][b]['weight']
+                self.graph[a][b]['weight'] = (current_weight + weight) / 2
+                self.graph[a][b]['interaction_count'] += 1
+            else:
+                self.graph.add_edge(a, b, weight=weight, interaction_count=1)
+    
+    def calculate_trust_metrics(self):
+        """Calculate key trust density indicators"""
+        if len(self.graph.nodes) == 0:
+            return {"error": "No interaction data"}
+        
+        # 1. Average Edge Weight (Interaction Strength)
+        weights = [data['weight'] for _, _, data in self.graph.edges(data=True)]
+        avg_weight = np.mean(weights) if weights else 0
+        
+        # 2. Clustering Coefficient (Community Cohesion)
+        clustering = nx.average_clustering(self.graph, weight='weight')
+        
+        # 3. Betweenness Centrality Gini (Equality of Influence)
+        betweenness = nx.betweenness_centrality(self.graph, weight='weight')
+        if betweenness:
+            gini = self._calculate_gini(list(betweenness.values()))
+        else:
+            gini = 0
+        
+        # 4. Isolated Nodes Percentage
+        isolated = list(nx.isolates(self.graph))
+        isolated_pct = len(isolated) / len(self.graph.nodes) * 100 if self.graph.nodes else 0
+        
+        # 5. Predicted Friction Score (Proprietary formula)
+        friction = max(0, 1 - (avg_weight * 0.3 + clustering * 0.4 + (1-gini) * 0.3))
+        
+        return {
+            "trust_density_score": round(avg_weight * clustering * 10, 3),
+            "avg_interaction_strength": round(avg_weight, 3),
+            "community_cohesion": round(clustering, 3),
+            "influence_equality": round(1 - gini, 3),  # 1 = perfect equality
+            "isolated_members_pct": round(isolated_pct, 1),
+            "predicted_friction_risk": round(friction, 3),
+            "network_health": "HEALTHY" if friction < 0.3 else "WARNING" if friction < 0.6 else "CRITICAL"
+        }
+    
+    def _calculate_gini(self, x):
+        """Calculate Gini coefficient"""
+        x = np.array(x)
+        mad = np.abs(np.subtract.outer(x, x)).mean()
+        rmad = mad / np.mean(x)
+        return 0.5 * rmad
+    
+    def visualize_network(self, output_file="trust_network.png"):
+        """Generate network visualization"""
+        plt.figure(figsize=(10, 8))
+        pos = nx.spring_layout(self.graph, weight='weight', seed=42)
+        
+        # Node size by degree
+        node_sizes = [300 + 100 * self.graph.degree(n) for n in self.graph.nodes()]
+        
+        # Edge width by weight
+        edge_weights = [self.graph[u][v]['weight'] * 2 for u, v in self.graph.edges()]
+        
+        nx.draw_networkx_nodes(self.graph, pos, node_size=node_sizes, 
+                               node_color='lightblue', alpha=0.9)
+        nx.draw_networkx_edges(self.graph, pos, width=edge_weights, 
+                               alpha=0.5, edge_color='gray')
+        nx.draw_networkx_labels(self.graph, pos, font_size=10)
+        
+        plt.title("Trust Density Network Analysis", fontsize=16)
+        plt.axis('off')
+        plt.tight_layout()
+        plt.savefig(output_file, dpi=150, bbox_inches='tight')
+        plt.close()
+        return output_file
+
+# === DEMONSTRATION ===
+if __name__ == "__main__":
+    analyzer = TrustDensityAnalyzer()
+    
+    # Simulated interaction data (in production: from communications, transactions, etc.)
+    simulated_interactions = [
+        ("Leader_A", "Member_1", 8.5, "2024-01-01"),
+        ("Leader_A", "Member_2", 7.2, "2024-01-01"),
+        ("Member_1", "Member_3", 9.1, "2024-01-02"),
+        ("Member_2", "Member_3", 6.8, "2024-01-02"),
+        ("Member_4", "Member_5", 9.5, "2024-01-02"),  # Strong sub-group
+        ("Member_4", "Member_6", 9.3, "2024-01-03"),
+        ("Member_5", "Member_6", 9.7, "2024-01-03"),
+        # Isolated member with weak connections
+        ("Member_7", "Member_1", 2.1, "2024-01-04"),
+        ("Member_7", "Member_2", 1.8, "2024-01-04"),
+        # Conflictual relationship
+        ("Member_8", "Member_9", 1.2, "2024-01-05"),
+    ]
+    
+    analyzer.add_interactions(simulated_interactions)
+    
+    metrics = analyzer.calculate_trust_metrics()
+    print("=== TRUST DENSITY ANALYTICS ===")
+    for key, value in metrics.items():
+        print(f"{key.replace('_', ' ').title()}: {value}")
+    
+    # Generate visualization
+    viz_file = analyzer.visualize_network()
+    print(f"\nNetwork visualization saved to: {viz_file}")
