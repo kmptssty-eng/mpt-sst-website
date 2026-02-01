@@ -1,0 +1,112 @@
+    readme_file = self.deploy_dir / "README.md"
+    with open(readme_file, 'w') as f:
+        f.write(readme)
+    
+    print("✓ Created deployment README.md")
+
+def deploy_locally(self):
+    """Deploy locally using Docker"""
+    print("\n🚀 Deploying MPT-SST Dashboard Locally...")
+    print("="*50)
+    
+    # Check if port is available
+    if self.is_port_in_use(self.config['port']):
+        print(f"⚠️  Port {self.config['port']} is already in use")
+        choice = input(f"Use different port? (y/n): ")
+        if choice.lower() == 'y':
+            new_port = input("Enter new port (default 8502): ").strip() or "8502"
+            self.config['port'] = int(new_port)
+    
+    # Change to deployment directory
+    original_dir = os.getcwd()
+    os.chdir(self.deploy_dir)
+    
+    try:
+        # Build and start
+        print("\n🔨 Building Docker containers...")
+        subprocess.run(["docker-compose", "build"], check=True)
+        
+        print("\n🚀 Starting services...")
+        subprocess.run(["docker-compose", "up", "-d"], check=True)
+        
+        # Wait for startup
+        print("\n⏳ Waiting for dashboard to start (15 seconds)...")
+        time.sleep(15)
+        
+        # Test connection
+        print("\n🧪 Testing dashboard accessibility...")
+        import requests
+        try:
+            response = requests.get(f"http://localhost:{self.config['port']}/_stcore/health", 
+                                  timeout=10)
+            if response.status_code == 200:
+                print(f"✅ Dashboard is running at http://localhost:{self.config['port']}")
+                
+                # Open browser
+                open_browser = input("\n🌐 Open in browser? (y/n): ").lower()
+                if open_browser == 'y':
+                    webbrowser.open(f"http://localhost:{self.config['port']}")
+                
+                # Show logs command
+                print(f"\n📋 View logs: docker-compose logs -f")
+                print(f"🛑 Stop dashboard: docker-compose down")
+                
+                return True
+            else:
+                print(f"❌ Dashboard responded with status {response.status_code}")
+                return False
+        except Exception as e:
+            print(f"❌ Could not connect to dashboard: {e}")
+            print("Check logs with: docker-compose logs peace-dashboard")
+            return False
+            
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Deployment failed: {e}")
+        return False
+    finally:
+        os.chdir(original_dir)
+
+def is_port_in_use(self, port):
+    """Check if port is already in use"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) == 0
+
+def create_complete_deployment(self):
+    """Create complete deployment package"""
+    print("\n" + "="*70)
+    print("CREATING COMPLETE DEPLOYMENT PACKAGE")
+    print("="*70)
+    
+    self.create_requirements_file()
+    self.create_dockerfile()
+    self.create_docker_compose()
+    self.create_nginx_config()
+    self.create_deployment_scripts()
+    self.copy_source_files()
+    self.create_environment_file()
+    self.create_readme()
+    
+    print("\n" + "="*70)
+    print("DEPLOYMENT PACKAGE CREATION COMPLETE")
+    print("="*70)
+    print(f"\n📁 Deployment directory: {self.deploy_dir}")
+    print(f"📦 Total size: {self.get_directory_size(self.deploy_dir)} MB")
+    print(f"📋 Files created: {self.count_files(self.deploy_dir)}")
+    
+    return self.deploy_dir
+
+def get_directory_size(self, path):
+    """Calculate directory size in MB"""
+    total = 0
+    for dirpath, dirnames, filenames in os.walk(path):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            total += os.path.getsize(fp)
+    return round(total / (1024 * 1024), 2)
+
+def count_files(self, path):
+    """Count files in directory"""
+    count = 0
+    for _, _, filenames in os.walk(path):
+        count += len(filenames)
+    return count
