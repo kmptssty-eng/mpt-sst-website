@@ -1,0 +1,95 @@
+# linguistic_coherence_engine.py
+
+import streamlit as st
+import numpy as np
+from sentence_transformers import SentenceTransformer
+
+# Sample MPVOC - In reality, this would be a comprehensive list from the MPVOC document
+MPVOC_POSITIVE = [
+    "unity", "compassion", "forgiveness", "dialogue", "peace", 
+    "harmony", "respect", "dignity", "reconciliation", "love"
+]
+
+MPVOC_NEGATIVE = [
+    "exclusion", "hatred", "violence", "discrimination", "conflict",
+    "aggression", "hostility", "prejudice", "animosity", "division"
+]
+
+# Load the pre-trained model
+@st.cache_resource
+def load_model():
+    model = SentenceTransformer('all-MiniLM-L6-v2')  # A small and efficient model
+    return model
+
+model = load_model()
+
+# Encode the MPVOC terms
+positive_embeddings = model.encode(MPVOC_POSITIVE)
+negative_embeddings = model.encode(MPVOC_NEGATIVE)
+
+def compute_mci(text):
+    # Encode the input text
+    text_embedding = model.encode([text])[0]
+    
+    # Compute similarities with positive terms
+    pos_similarities = np.dot(positive_embeddings, text_embedding) / (np.linalg.norm(positive_embeddings, axis=1) * np.linalg.norm(text_embedding))
+    pos_score = np.mean(pos_similarities)
+    
+    # Compute similarities with negative terms
+    neg_similarities = np.dot(negative_embeddings, text_embedding) / (np.linalg.norm(negative_embeddings, axis=1) * np.linalg.norm(text_embedding))
+    neg_score = np.mean(neg_similarities)
+    
+    # MCI score: positive minus negative (scaled to 0-100 for convenience)
+    mci_raw = pos_score - neg_score
+    # We can scale it to a 0-100 range (assuming the raw scores are between -1 and 1)
+    mci_scaled = (mci_raw + 1) * 50  # This maps -1 to 0, 0 to 50, 1 to 100
+    return mci_scaled, pos_score, neg_score
+
+def flag_negative_hermeneutics(neg_score, threshold=0.5):
+    # If the negative similarity is above threshold, flag it
+    return neg_score > threshold
+
+# Streamlit app
+st.title("Linguistic Coherence Engine Prototype")
+st.subheader("Metaphysical Coherence Index (MCI) Calculator")
+
+text_input = st.text_area("Enter text to analyze (e.g., sermon, policy draft):", height=200)
+
+if st.button("Analyze"):
+    if text_input.strip() == "":
+        st.warning("Please enter some text.")
+    else:
+        mci, pos_score, neg_score = compute_mci(text_input)
+        
+        st.write(f"**Metaphysical Coherence Index (MCI):** {mci:.2f}")
+        st.write(f"*Positive resonance score:* {pos_score:.3f}")
+        st.write(f"*Negative resonance score:* {neg_score:.3f}")
+        
+        # Flag negative hermeneutics
+        if flag_negative_hermeneutics(neg_score, threshold=0.5):
+            st.error("⚠️ Warning: High negative hermeneutics detected.")
+        else:
+            st.success("No significant negative hermeneutics detected.")
+        
+        # Additional: Show the most similar positive and negative terms
+        # Encode the input text again for detailed analysis
+        text_embedding = model.encode([text_input])[0]
+        
+        # Compute similarities for each term
+        positive_similarities = np.dot(positive_embeddings, text_embedding) / (np.linalg.norm(positive_embeddings, axis=1) * np.linalg.norm(text_embedding))
+        negative_similarities = np.dot(negative_embeddings, text_embedding) / (np.linalg.norm(negative_embeddings, axis=1) * np.linalg.norm(text_embedding))
+        
+        # Get top 3 positive and negative terms
+        top_pos_indices = np.argsort(positive_similarities)[-3:][::-1]
+        top_neg_indices = np.argsort(negative_similarities)[-3:][::-1]
+        
+        st.write("### Top Resonant Positive Terms:")
+        for idx in top_pos_indices:
+            st.write(f"- {MPVOC_POSITIVE[idx]} (similarity: {positive_similarities[idx]:.3f})")
+        
+        st.write("### Top Resonant Negative Terms:")
+        for idx in top_neg_indices:
+            st.write(f"- {MPVOC_NEGATIVE[idx]} (similarity: {negative_similarities[idx]:.3f})")
+
+st.markdown("---")
+st.markdown("**Note:** This is a prototype. The actual MPVOC and model would be more comprehensive.")
