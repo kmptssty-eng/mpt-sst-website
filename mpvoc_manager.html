@@ -1,0 +1,155 @@
+# mpvoc_manager.py
+import json
+import os
+from sentence_transformers import SentenceTransformer, util
+import torch
+
+class MPVOCManager:
+    def __init__(self, mpvoc_file='mpvoc.json', model_name='all-MiniLM-L6-v2'):
+        self.mpvoc_file = mpvoc_file
+        self.model = SentenceTransformer(model_name)
+        self.resonant_terms = []
+        self.dissonant_terms = []
+        self.load_mpvoc()
+        
+    def load_mpvoc(self):
+        if os.path.exists(self.mpvoc_file):
+            with open(self.mpvoc_file, 'r') as f:
+                data = json.load(f)
+                self.resonant_terms = data.get('resonant_terms', [])
+                self.dissonant_terms = data.get('dissonant_terms', [])
+        else:
+            self.resonant_terms = ["unity", "compassion", "shared destiny", "forgiveness"]
+            self.dissonant_terms = ["exclusion", "hereditary enemy", "purification", "supremacy"]
+            self.save_mpvoc()
+    
+    def save_mpvoc(self):
+        data = {
+            'resonant_terms': self.resonant_terms,
+            'dissonant_terms': self.dissonant_terms
+        }
+        with open(self.mpvoc_file, 'w') as f:
+            json.dump(data, f, indent=2)
+    
+    def add_term(self, term, term_type):
+        if term_type == 'resonant':
+            if term not in self.resonant_terms:
+                self.resonant_terms.append(term)
+        elif term_type == 'dissonant':
+            if term not in self.dissonant_terms:
+                self.dissonant_terms.append(term)
+        else:
+            raise ValueError("term_type must be 'resonant' or 'dissonant'")
+        self.save_mpvoc()
+    
+    def remove_term(self, term, term_type):
+        if term_type == 'resonant':
+            if term in self.resonant_terms:
+                self.resonant_terms.remove(term)
+        elif term_type == 'dissonant':
+            if term in self.dissonant_terms:
+                self.dissonant_terms.remove(term)
+        else:
+            raise ValueError("term_type must be 'resonant' or 'dissonant'")
+        self.save_mpvoc()
+    
+    def analyze_text(self, text, threshold=0.5):
+        # Encode the MPVOC terms
+        resonant_embeddings = self.model.encode(self.resonant_terms, convert_to_tensor=True)
+        dissonant_embeddings = self.model.encode(self.dissonant_terms, convert_to_tensor=True)
+        
+        # Split text into sentences
+        import re
+        sentences = re.split(r'[.!?;]\s*', text)
+        sentences = [s.strip() for s in sentences if len(s.strip()) > 5]
+        
+        if not sentences:
+            return {"mci": 0.5, "flags": [], "error": "No analyzable text."}
+        
+        sentence_embeddings = self.model.encode(sentences, convert_to_tensor=True)
+        
+        # Calculate similarities
+        resonant_sims = util.pytorch_cos_sim(sentence_embeddings, resonant_embeddings)
+        dissonant_sims = util.pytorch_cos_sim(sentence_embeddings, dissonant_embeddings)
+        
+        # Get max similarity per sentence
+        max_res_per_sentence, _ = torch.max(resonant_sims, dim=1)
+        max_dis_per_sentence, _ = torch.max(dissonant_sims, dim=1)
+        
+        # Calculate MCI
+        avg_res = torch.mean(max_res_per_sentence).item()
+        avg_dis = torch.mean(max_dis_per_sentence).item()
+        mci_raw = (avg_res - avg_dis + 1) / 2
+        
+        # Flag sentences with high dissonance
+        flagged = []
+        for i, sentence in enumerate(sentences):
+            if max_dis_per_sentence[i].item() > threshold:
+                # Find the closest dissonant term
+                dis_scores = dissonant_sims[i]
+                closest_term_index = torch.argmax(dis_scores).item()
+                closest_term = self.dissonant_terms[closest_term_index]
+                flagged.append({
+                    "sentence": sentence,
+                    "dissonance_score": round(max_dis_per_sentence[i].item(), 3),
+                    "closest_term": closest_term
+                })
+        
+        return {
+            "metaphysical_coherence_index": round(mci_raw, 3),
+            "resonance_score": round(avg_res, 3),
+            "dissonance_score": round(avg_dis, 3),
+            "flagged_sentences": flagged,
+            "sentence_count": len(sentences)
+        }
+
+def interactive_refinement():
+    manager = MPVOCManager()
+    
+    while True:
+        print("\nCurrent MPVOC:")
+        print(f"Resonant terms: {manager.resonant_terms}")
+        print(f"Dissonant terms: {manager.dissonant_terms}")
+        
+        print("\nOptions:")
+        print("1. Add a term")
+        print("2. Remove a term")
+        print("3. Analyze a text")
+        print("4. Exit")
+        
+        choice = input("Enter choice (1-4): ")
+        
+        if choice == '1':
+            term = input("Enter the term: ")
+            term_type = input("Enter type (resonant/dissonant): ")
+            manager.add_term(term, term_type)
+            print(f"Added {term_type} term: {term}")
+        
+        elif choice == '2':
+            term = input("Enter the term to remove: ")
+            term_type = input("Enter type (resonant/dissonant): ")
+            manager.remove_term(term, term_type)
+            print(f"Removed {term_type} term: {term}")
+        
+        elif choice == '3':
+            text = input("Enter the text to analyze (or 'sample' for a sample): ")
+            if text.lower() == 'sample':
+                text = "We must remember our shared destiny as a people. Compassion for the stranger is our duty. However, we cannot forget the traitors among us who collaborate with the eternal enemy. Their cleansing from our ranks is necessary for our purification."
+                print(f"Using sample text:\n{text}")
+            result = manager.analyze_text(text)
+            print(f"\nMCI Score: {result['metaphysical_coherence_index']}")
+            print(f"Resonance: {result['resonance_score']}, Dissonance: {result['dissonance_score']}")
+            if result['flagged_sentences']:
+                print("\n⚠️ FLAGGED FOR NEGATIVE HERMENEUTICS:")
+                for flag in result['flagged_sentences']:
+                    print(f"  - '{flag['sentence']}'")
+                    print(f"    (Matches term '{flag['closest_term']}' with score {flag['dissonance_score']})")
+        
+        elif choice == '4':
+            break
+        
+        else:
+            print("Invalid choice. Try again.")
+
+if __name__ == "__main__":
+    interactive_refinement()
