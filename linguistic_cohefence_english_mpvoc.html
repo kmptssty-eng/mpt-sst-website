@@ -1,0 +1,78 @@
+# linguistic_coherence_engine_mvp.py
+import re
+from sentence_transformers import SentenceTransformer, util
+import numpy as np
+
+# === CONFIGURATION (To be replaced with full MPVOC) ===
+MPVOC_RESONANT = ["unity", "collective good", "compassion", "forgiveness", "dialogue", "shared destiny", "interdependence", "dignity", "reconciliation", "regeneration"]
+MPVOC_DISSONANT = ["exclusion", "hereditary enemy", "purification", "supremacy", "inevitable conflict", "utter defeat", "permanent threat", "cleansing", "traitor", "infidel"]
+
+# Load a pre-trained semantic model
+model = SentenceTransformer('all-MiniLM-L6-v2')
+
+# Encode MPVOC terms
+resonant_embeddings = model.encode(MPVOC_RESONANT, convert_to_tensor=True)
+dissonant_embeddings = model.encode(MPVOC_DISSONANT, convert_to_tensor=True)
+
+def analyze_text(text, threshold=0.5):
+    """
+    Analyzes input text against the MPVOC.
+    Returns MCI score and flagged dissonant segments.
+    """
+    # Split text into sentences/phrases
+    sentences = re.split(r'[.!?;]\s*', text)
+    sentences = [s.strip() for s in sentences if len(s.strip()) > 5]
+
+    if not sentences:
+        return {"mci": 0.5, "flags": [], "error": "No analyzable text."}
+
+    sentence_embeddings = model.encode(sentences, convert_to_tensor=True)
+
+    # Calculate similarity to resonant and dissonant vocabularies
+    resonant_sims = util.pytorch_cos_sim(sentence_embeddings, resonant_embeddings)
+    dissonant_sims = util.pytorch_cos_sim(sentence_embeddings, dissonant_embeddings)
+
+    # Get max similarity per sentence to each vocabulary
+    max_res_per_sentence, _ = torch.max(resonant_sims, dim=1)
+    max_dis_per_sentence, _ = torch.max(dissonant_sims, dim=1)
+
+    # Calculate Metaphysical Coherence Index (MCI) for the document
+    avg_res = torch.mean(max_res_per_sentence).item()
+    avg_dis = torch.mean(max_dis_per_sentence).item()
+    # Simple normalized score: (Resonance - Dissonance + 1) / 2 -> range 0-1
+    mci_raw = (avg_res - avg_dis + 1) / 2
+
+    # Flag sentences with high dissonance similarity
+    flagged = []
+    for i, sentence in enumerate(sentences):
+        if max_dis_per_sentence[i].item() > threshold:
+            flagged.append({
+                "sentence": sentence,
+                "dissonance_score": round(max_dis_per_sentence[i].item(), 3),
+                "closest_term": MPVOC_DISSONANT[torch.argmax(dissonant_sims[i]).item()]
+            })
+
+    return {
+        "metaphysical_coherence_index": round(mci_raw, 3),
+        "resonance_score": round(avg_res, 3),
+        "dissonance_score": round(avg_dis, 3),
+        "flagged_sentences": flagged,
+        "sentence_count": len(sentences)
+    }
+
+# === EXAMPLE USAGE ===
+if __name__ == "__main__":
+    sample_sermon = """
+    We must remember our shared destiny as a people. Compassion for the stranger is our duty. 
+    However, we cannot forget the traitors among us who collaborate with the eternal enemy. 
+    Their cleansing from our ranks is necessary for our purification.
+    """
+    
+    results = analyze_text(sample_sermon)
+    print(f"MCI Score: {results['metaphysical_coherence_index']}")
+    print(f"Resonance: {results['resonance_score']}, Dissonance: {results['dissonance_score']}")
+    if results['flagged_sentences']:
+        print("\n⚠️ FLAGGED FOR NEGATIVE HERMENEUTICS:")
+        for flag in results['flagged_sentences']:
+            print(f"  - '{flag['sentence']}'")
+            print(f"    (Matches term '{flag['closest_term']}' with score {flag['dissonance_score']})")
